@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>바카라: 대출과 상환 에디션</title>
+    <style>
+        :root {
+            --gold: #c5a059;
+            --player-blue: #1e40af;
+            --banker-red: #991b1b;
+            --tie-green: #166534;
+            --bg-dark: #0a0a0a;
+            --panel-bg: #1a1a1a;
+            --debt-red: #ef4444;
+            --loan-purple: #7c3aed;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Pretendard', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 반응형 헤더 */
+        .header {
+            background: #111;
+            padding: 10px 15px;
+            border-bottom: 2px solid var(--gold);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .logo { grid-column: span 2; text-align: center; color: var(--gold); font-weight: 900; letter-spacing: 2px; font-size: 1.2rem; }
+        .info-box { background: #000; padding: 8px; border-radius: 5px; text-align: center; border: 1px solid #333; }
+        .info-label { font-size: 0.7rem; color: #888; display: block; }
+        .info-val { font-weight: bold; font-size: 1rem; }
+        .val-balance { color: #fbbf24; }
+        .val-debt { color: var(--debt-red); }
+
+        /* 메인 컨텐츠 반응형 레이아웃 */
+        .game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 15px;
+        }
+
+        @media (min-width: 1024px) {
+            .game-area { flex-direction: row; }
+            .table-section { flex: 2; }
+            .scoreboard-section { flex: 1; }
+        }
+
+        /* 카드 테이블 */
+        .table-section { display: flex; flex-direction: column; gap: 15px; }
+
+        .card-display {
+            background: #064e3b;
+            border-radius: 20px;
+            border: 5px solid #3d2b1f;
+            min-height: 180px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            position: relative;
+            padding: 10px;
+        }
+
+        .side-label { position: absolute; font-size: 1.2rem; font-weight: 900; opacity: 0.2; pointer-events: none; }
+        .label-p { left: 10%; color: var(--player-blue); }
+        .label-b { right: 10%; color: var(--banker-red); }
+
+        .cards-container { display: flex; gap: 5px; min-width: 100px; justify-content: center; }
+        
+        .card {
+            width: 50px; height: 75px;
+            background: white; border-radius: 4px; color: black;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 3px; font-size: 0.8rem; font-weight: bold;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .score-badge {
+            position: absolute; bottom: 10px; padding: 3px 12px;
+            border-radius: 15px; font-weight: bold; background: rgba(0,0,0,0.7); font-size: 0.9rem;
+        }
+
+        /* 배팅 구역 */
+        .betting-grid { display: grid; grid-template-columns: 1fr 0.6fr 1fr; gap: 8px; }
+        .bet-box {
+            border: 2px solid #333; border-radius: 10px; padding: 15px 5px;
+            text-align: center; cursor: pointer; transition: 0.2s;
+        }
+        .bet-box.active { border-color: var(--gold); background: rgba(197, 160, 89, 0.2); }
+        .bet-box .title { display: block; font-weight: bold; font-size: 1rem; }
+        .bet-box .odds { font-size: 0.7rem; opacity: 0.6; }
+        .bet-amt { height: 1.2rem; font-weight: bold; color: var(--gold); margin-top: 5px; font-size: 0.9rem; }
+
+        .bet-p { color: #60a5fa; }
+        .bet-b { color: #f87171; }
+        .bet-t { color: #4ade80; }
+
+        /* 컨트롤 영역 */
+        .controls {
+            background: #111; padding: 15px;
+            display: flex; flex-direction: column; gap: 15px;
+            border-top: 1px solid #333;
+        }
+
+        .chip-container { display: flex; justify-content: center; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .chip {
+            min-width: 50px; height: 50px; border-radius: 50%;
+            border: 3px dashed rgba(255,255,255,0.5);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.8rem; cursor: pointer;
+        }
+        .chip.selected { transform: scale(1.15); border-style: solid; box-shadow: 0 0 10px white; }
+
+        /* 버튼 2x2 그리드 변경 */
+        .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+        .btn-deal { background: var(--gold); color: black; grid-column: span 2; padding: 18px; font-size: 1.2rem; }
+        .btn-clear { background: #333; color: white; }
+        .btn-repay { background: var(--tie-green); color: white; }
+        .btn-loan { background: var(--loan-purple); color: white; }
+
+        /* 출목표 영역 */
+        .scoreboard-section { background: var(--panel-bg); border-radius: 10px; padding: 10px; }
+        .bead-plate {
+            display: grid; grid-template-rows: repeat(6, 1fr); grid-auto-flow: column;
+            gap: 2px; background: #000; height: 120px; overflow-x: auto;
+        }
+        .bead { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: bold; }
+        .bead-p { background: var(--player-blue); }
+        .bead-b { background: var(--banker-red); }
+        .bead-t { background: var(--tie-green); }
+
+        #msg-log { text-align: center; height: 1.5rem; color: var(--gold); font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">BACCARAT: DEBT & LOAN</div>
+        <div class="info-box">
+            <span class="info-label">자산 (BALANCE)</span>
+            <span class="info-val val-balance" id="balance">$10,000</span>
+        </div>
+        <div class="info-box">
+            <span class="info-label">사채 (DEBT)</span>
+            <span class="info-val val-debt" id="debt">$50,000</span>
+        </div>
+    </div>
+
+    <div class="game-area">
+        <div class="table-section">
+            <div id="msg-log">배팅을 시작하세요</div>
+            
+            <div class="card-display">
+                <div class="side-label label-p">PLAYER</div>
+                <div class="cards-container" id="player-cards"></div>
+                <div class="score-badge" id="player-score" style="left: 15%; display: none;">0</div>
+
+                <div class="side-label label-b">BANKER</div>
+                <div class="cards-container" id="banker-cards"></div>
+                <div class="score-badge" id="banker-score" style="right: 15%; display: none;">0</div>
+            </div>
+
+            <div class="betting-grid">
+                <div class="bet-box bet-p" onclick="addBet('PLAYER')">
+                    <span class="title">PLAYER</span>
+                    <span class="odds">1:1</span>
+                    <div class="bet-amt" id="amt-PLAYER"></div>
+                </div>
+                <div class="bet-box bet-t" onclick="addBet('TIE')">
+                    <span class="title">TIE</span>
+                    <span class="odds">1:8</span>
+                    <div class="bet-amt" id="amt-TIE"></div>
+                </div>
+                <div class="bet-box bet-b" onclick="addBet('BANKER')">
+                    <span class="title">BANKER</span>
+                    <span class="odds">1:0.95</span>
+                    <div class="bet-amt" id="amt-BANKER"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scoreboard-section">
+            <div style="font-size: 0.8rem; margin-bottom: 5px; color: var(--gold);">SCOREBOARD</div>
+            <div class="bead-plate" id="bead-plate"></div>
+            <div id="stats" style="font-size: 0.7rem; margin-top: 5px; color: #888;">
+                P: 0 | B: 0 | T: 0 | Total: 0
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="chip-container">
+            <div class="chip" style="background:#b91c1c;" onclick="selectChip(500, this)">500</div>
+            <div class="chip" style="background:#047857;" onclick="selectChip(1000, this)">1K</div>
+            <div class="chip" style="background:#4b5563;" onclick="selectChip(5000, this)">5K</div>
+            <div class="chip" style="background:#4b5563;" onclick="selectChip(10000, this)">10K</div>
+            <div class="chip" style="background:#1d4ed8;" onclick="selectChip(50000, this)">50k</div>
+            <div class="chip" style="background:#ffbb00;" onclick="selectChip(100000, this)">100k</div>
+        </div>
+        <div class="action-btns">
+            <button class="btn btn-deal" id="deal-btn" onclick="deal()">DEAL (게임 시작)</button>
+            <button class="btn btn-clear" onclick="clearBets()">CLEAR (취소)</button>
+            <button class="btn btn-loan" onclick="takeLoan()">LOAN (대출)</button>
+            <button class="btn btn-repay" onclick="repayDebt()">REPAY (상환)</button>
+        </div>
+    </div>
+
+    <script>
+        let balance = 10000;
+        let debt = 50000;
+        let currentChip = 100;
+        let bets = { PLAYER: 0, BANKER: 0, TIE: 0 };
+        let history = [];
+        let isDealing = false;
+
+        function selectChip(amt, el) {
+            currentChip = amt;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function addBet(side) {
+            if (isDealing) return;
+            if (balance < currentChip) {
+                showMsg("잔액이 부족합니다! 대출을 고려해보세요.");
+                return;
+            }
+            bets[side] += currentChip;
+            balance -= currentChip;
+            updateUI();
+        }
+
+        function clearBets() {
+            if (isDealing) return;
+            balance += (bets.PLAYER + bets.BANKER + bets.TIE);
+            bets = { PLAYER: 0, BANKER: 0, TIE: 0 };
+            updateUI();
+        }
+
+        function takeLoan() {
+            if (isDealing) return;
+            const loanAmt = 10000;
+            balance += loanAmt;
+            debt += loanAmt;
+            showMsg(`$${loanAmt.toLocaleString()}을 추가 대출받았습니다.`);
+            updateUI();
+        }
+
+        function repayDebt() {
+            if (isDealing) return;
+            if (debt <= 0) {
+                showMsg("모든 빚을 갚았습니다! 자유입니다!");
+                return;
+            }
+            if (balance <= 0) {
+                showMsg("상환할 자산이 없습니다.");
+                return;
+            }
+            
+            const repayAmt = Math.min(balance, debt);
+            balance -= repayAmt;
+            debt -= repayAmt;
+            
+            if (debt <= 0) {
+                debt = 0;
+                showMsg("축하합니다! 사채를 모두 청산했습니다!");
+            } else {
+                showMsg(`$${repayAmt.toLocaleString()}을 상환했습니다.`);
+            }
+            
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('balance').innerText = `$${Math.floor(balance).toLocaleString()}`;
+            document.getElementById('debt').innerText = `$${Math.ceil(debt).toLocaleString()}`;
+            document.getElementById('amt-PLAYER').innerText = bets.PLAYER > 0 ? `$${bets.PLAYER}` : '';
+            document.getElementById('amt-BANKER').innerText = bets.BANKER > 0 ? `$${bets.BANKER}` : '';
+            document.getElementById('amt-TIE').innerText = bets.TIE > 0 ? `$${bets.TIE}` : '';
+        }
+
+        function showMsg(m) { document.getElementById('msg-log').innerText = m; }
+
+        function getCard() {
+            const val = Math.floor(Math.random() * 13) + 1;
+            const suits = ['♠', '♥', '♣', '♦'];
+            const suit = suits[Math.floor(Math.random() * 4)];
+            const score = val >= 10 ? 0 : val;
+            const name = val === 1 ? 'A' : val === 11 ? 'J' : val === 12 ? 'Q' : val === 13 ? 'K' : val;
+            return { name, suit, score };
+        }
+
+        function calcScore(cards) { return cards.reduce((a, b) => a + b.score, 0) % 10; }
+
+        async function deal() {
+            if (isDealing) return;
+            const totalBet = bets.PLAYER + bets.BANKER + bets.TIE;
+            if (totalBet === 0) { showMsg("배팅을 해주세요!"); return; }
+
+            isDealing = true;
+            document.getElementById('deal-btn').disabled = true;
+            showMsg("NO MORE BETS");
+
+            // 이자 추가 (매 판마다 남은 빚의 0.5% 추가)
+            if (debt > 0) debt *= 1.005;
+
+            const pCards = [getCard(), getCard()];
+            const bCards = [getCard(), getCard()];
+            
+            renderCards('player', pCards);
+            renderCards('banker', bCards);
+            await sleep(800);
+
+            let pScore = calcScore(pCards);
+            let bScore = calcScore(bCards);
+
+            if (pScore < 8 && bScore < 8) {
+                if (pScore <= 5) {
+                    const p3 = getCard();
+                    pCards.push(p3);
+                    renderCards('player', pCards);
+                    await sleep(800);
+                    pScore = calcScore(pCards);
+                    
+                    if (shouldBankerDraw(bScore, p3.score)) {
+                        bCards.push(getCard());
+                        renderCards('banker', bCards);
+                        await sleep(800);
+                        bScore = calcScore(bCards);
+                    }
+                } else if (bScore <= 5) {
+                    bCards.push(getCard());
+                    renderCards('banker', bCards);
+                    await sleep(800);
+                    bScore = calcScore(bCards);
+                }
+            }
+
+            const result = pScore > bScore ? 'P' : pScore < bScore ? 'B' : 'T';
+            
+            let winAmt = 0;
+            if (result === 'P') winAmt = bets.PLAYER * 2;
+            else if (result === 'B') winAmt = bets.BANKER * 1.95;
+            else if (result === 'T') winAmt = bets.TIE * 9;
+            
+            balance += winAmt;
+            history.push(result);
+            updateBeadPlate();
+            
+            if (winAmt > 0) showMsg(`WIN! +$${winAmt.toLocaleString()}`);
+            else showMsg("LOSE...");
+
+            setTimeout(() => {
+                isDealing = false;
+                document.getElementById('deal-btn').disabled = false;
+                bets = { PLAYER: 0, BANKER: 0, TIE: 0 };
+                updateUI();
+            }, 1000);
+        }
+
+        function shouldBankerDraw(b, p3) {
+            if (b <= 2) return true;
+            if (b === 3 && p3 !== 8) return true;
+            if (b === 4 && [2,3,4,5,6,7].includes(p3)) return true;
+            if (b === 5 && [4,5,6,7].includes(p3)) return true;
+            if (b === 6 && [6,7].includes(p3)) return true;
+            return false;
+        }
+
+        function renderCards(side, cards) {
+            const container = document.getElementById(`${side}-cards`);
+            const scoreEl = document.getElementById(`${side}-score`);
+            container.innerHTML = '';
+            cards.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                if (c.suit === '♥' || c.suit === '♦') div.style.color = 'red';
+                div.innerHTML = `<div>${c.name}</div><div style="font-size:1.5rem; text-align:center;">${c.suit}</div><div style="text-align:right;">${c.name}</div>`;
+                container.appendChild(div);
+            });
+            scoreEl.style.display = 'block';
+            scoreEl.innerText = calcScore(cards);
+        }
+
+        function updateBeadPlate() {
+            const plate = document.getElementById('bead-plate');
+            plate.innerHTML = '';
+            let p=0, b=0, t=0;
+            history.forEach(res => {
+                const bead = document.createElement('div');
+                bead.className = `bead bead-${res.toLowerCase()}`;
+                bead.innerText = res;
+                plate.appendChild(bead);
+                if(res==='P') p++; else if(res==='B') b++; else t++;
+            });
+            document.getElementById('stats').innerText = `P: ${p} | B: ${b} | T: ${t} | Total: ${history.length}`;
+            plate.scrollLeft = plate.scrollWidth;
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+        selectChip(100, document.querySelector('.chip'));
+        updateUI();
+    </script>
+</body>
+</html>
